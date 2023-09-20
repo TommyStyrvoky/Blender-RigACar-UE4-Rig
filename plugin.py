@@ -63,13 +63,14 @@ class BuildUERig(bpy.types.Operator):
         rigCollection = None
         
         for collection in bpy.data.collections:
+            print(collection.name)
             if collection.name == 'Unreal car rigs':
                 rigCollection = collection
                 break
         print(rigCollection)
         if not rigCollection:
-            rigCollection = bpy.ops.outliner.collection_new(nested=True)
-            rigCollection.name = 'Unreal car rigs'
+            rigCollection = bpy.context.blend_data.collections.new(name='Unreal car rigs')
+            
         bpy.ops.object.armature_add()
         carUERig = bpy.context.view_layer.objects.active
         rigCollection.objects.link(carUERig)
@@ -81,19 +82,12 @@ class BuildUERig(bpy.types.Operator):
         bpy.context.object.constraints["Child Of"].subtarget = "Root"
         bpy.ops.constraint.childof_set_inverse(constraint="Child Of", owner='OBJECT')
 
-        #carUERig.constraints["Child Of"].childof_set_inverse(constraint="Child Of", owner='OBJECT')
         bpy.ops.object.mode_set(mode = 'OBJECT', toggle=False)
 
         
         bpy.context.view_layer.objects.active = carUERig
         carUERig.data.bones[0].name = 'Root'
         root = carUERig.data.bones[0]
-        
-        bpy.ops.object.mode_set(mode = 'POSE', toggle=False)
-        bpy.ops.pose.constraint_add(type='CHILD_OF')
-        bpy.context.object.pose.bones['Root'].constraints["Child Of"].target = RigACarRig
-        bpy.ops.constraint.childof_set_inverse(constraint="Child Of", owner='BONE')
-        bpy.ops.object.mode_set(mode = 'OBJECT', toggle=False)
         
         for boneName in boneNames:
             rigObj = None
