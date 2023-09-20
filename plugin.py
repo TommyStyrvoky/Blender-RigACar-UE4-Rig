@@ -11,12 +11,17 @@ import bpy
 import mathutils
 from mathutils import Vector,Euler
 
+#globals
+
 boneNames =['Body',
             'wheel.Ft.L','wheel.Ft.R','wheel.Bk.L','wheel.Bk.R',
             'wheelbrake.Ft.L','wheelbrake.Ft.R','wheelbrake.Bk.L','wheelbrake.Bk.R']
 
+
+
 class BuildUERig(bpy.types.Operator):
     global boneNames
+    
     
     """Create rig for unreal engine export"""
     bl_idname = "object.buildcar"
@@ -55,24 +60,46 @@ class BuildUERig(bpy.types.Operator):
         carUERig = None
         
         #create bones and add constraints
+        rigCollection = None
         
+        for collection in bpy.data.collections:
+            if collection.name == 'Unreal car rigs':
+                rigCollection = collection
+                break
+        print(rigCollection)
+        if not rigCollection:
+            rigCollection = bpy.ops.outliner.collection_new(nested=True)
+            rigCollection.name = 'Unreal car rigs'
         bpy.ops.object.armature_add()
         carUERig = bpy.context.view_layer.objects.active
+        rigCollection.objects.link(carUERig)
         carUERig.location = RigACarRig.location
-        carUERig.name ='UE_Car_Rig'
-        carUERig.parent=RigACarRig.parent
+        carUERig.name = 'Car UE rig'
         
-        bpy.ops.object.mode_set(mode = 'EDIT', toggle=False)
+        bpy.ops.object.constraint_add(type='CHILD_OF')
+        carUERig.constraints["Child Of"].target = RigACarRig
+        bpy.context.object.constraints["Child Of"].subtarget = "Root"
+        bpy.ops.constraint.childof_set_inverse(constraint="Child Of", owner='OBJECT')
+
+        #carUERig.constraints["Child Of"].childof_set_inverse(constraint="Child Of", owner='OBJECT')
+        bpy.ops.object.mode_set(mode = 'OBJECT', toggle=False)
+
+        
         bpy.context.view_layer.objects.active = carUERig
         carUERig.data.bones[0].name = 'Root'
         root = carUERig.data.bones[0]
         
+        bpy.ops.object.mode_set(mode = 'POSE', toggle=False)
+        bpy.ops.pose.constraint_add(type='CHILD_OF')
+        bpy.context.object.pose.bones['Root'].constraints["Child Of"].target = RigACarRig
+        bpy.ops.constraint.childof_set_inverse(constraint="Child Of", owner='BONE')
+        bpy.ops.object.mode_set(mode = 'OBJECT', toggle=False)
         
         for boneName in boneNames:
             rigObj = None
             bone =None
             for child in RigACarRig.children:
-                if child.type == 'MESH' and child.name==boneName:
+                if child.type == 'MESH' and child.name.lower().find(boneName.lower())!=-1:
                     rigObj = child
                     break
             
@@ -82,7 +109,7 @@ class BuildUERig(bpy.types.Operator):
                 bone = carUERig.data.edit_bones.new(boneName)
                 transform = rigObj.matrix_world.to_translation()
                 bone.head = transform+Vector((0,0,0)) 
-                bone.tail = transform+Vector((0,0,1)) #offset
+                bone.tail = transform+Vector((0,0,1))*carUERig.scale #offset
                 bone.parent = carUERig.data.edit_bones['Root']
 
                 bpy.ops.object.mode_set(mode = 'POSE', toggle=False)
